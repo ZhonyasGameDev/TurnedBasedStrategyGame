@@ -1,3 +1,4 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEngine;
@@ -41,6 +42,8 @@ public class MoveAction : BaseAction
         {
             unitAnimator.SetBool(IS_WALKING, false);
             isActive = false;
+
+            onActionComplete();
         }
 
         //Rotate to the direction
@@ -48,8 +51,9 @@ public class MoveAction : BaseAction
         transform.forward = Vector3.Lerp(transform.forward, moveDirection, Time.deltaTime * rotateSpeed);
     }
 
-    public void Move(GridPosition gridPosition)
+    public void Move(GridPosition gridPosition, Action onAccionComplete)
     {
+        this.onActionComplete = onAccionComplete;
         this.targetPosition = LevelGrid.Instance.GetWorldPosition(gridPosition);
         isActive = true;
 
@@ -100,6 +104,12 @@ public class MoveAction : BaseAction
         }
 
         return validGridPositionList;
-
     }
+
+
+    public override string GetActionName()
+    {
+        return "Move";
+    }
+
 }
