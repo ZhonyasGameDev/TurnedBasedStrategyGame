@@ -5,7 +5,8 @@ using UnityEngine;
 
 public class MoveAction : BaseAction
 {
-    [SerializeField] private Animator unitAnimator;
+    public event EventHandler OnStartMoving;
+    public event EventHandler OnStopMoving;
     [SerializeField] private int maxMoveDistance = 4;
 
     private const string IS_WALKING = "IsWalking";
@@ -31,19 +32,16 @@ public class MoveAction : BaseAction
 
         if (Vector3.Distance(transform.position, targetPosition) > stoppingDistance)
         {
-            //Move the transform
             float moveSpeed = 4f;
             transform.position += moveSpeed * Time.deltaTime * moveDirection;
 
-            //Activate animations
-            unitAnimator.SetBool(IS_WALKING, true);
+            OnStartMoving.Invoke(this, EventArgs.Empty);
         }
         else
         {
-            unitAnimator.SetBool(IS_WALKING, false);
-            isActive = false;
+            OnStopMoving.Invoke(this, EventArgs.Empty);
 
-            onActionComplete();
+            ActionCompleted();
         }
 
         //Rotate to the direction
@@ -51,12 +49,12 @@ public class MoveAction : BaseAction
         transform.forward = Vector3.Lerp(transform.forward, moveDirection, Time.deltaTime * rotateSpeed);
     }
 
-    public override void TakeAction(GridPosition gridPosition, Action onAccionComplete)
+    public override void TakeAction(GridPosition gridPosition, Action onActionComplete)
     {
-        this.onActionComplete = onAccionComplete;
-        this.targetPosition = LevelGrid.Instance.GetWorldPosition(gridPosition);
-        isActive = true;
+        ActionStart(onActionComplete);
+        targetPosition = LevelGrid.Instance.GetWorldPosition(gridPosition);
 
+        OnStartMoving?.Invoke(this, EventArgs.Empty);
     }
 
     // A list of grid positions for all of the valid actions for this specific action.

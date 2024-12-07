@@ -7,18 +7,27 @@ using UnityEngine.EventSystems;
 public class UnitActionSystem : MonoBehaviour
 {
     public static UnitActionSystem Instance { get; private set; }
+
     public event EventHandler OnSelectedUnitChanged;
+    public event EventHandler OnSelectedActionChanged;
+    public event EventHandler<bool> OnBusyChanged;
+    public event EventHandler OnActionStarted;
+
+
     [SerializeField] private Unit selectedUnit;
     [SerializeField] private LayerMask unitLayerMask;
+
     private BaseAction selectedAction;
     private bool isBusy;
 
 
     private void Awake()
     {
-        if (Instance != null && Instance != this)
+        if (Instance != null)
         {
-            Debug.LogError("There is more than one Instance of UnitActionSystem");
+            Debug.LogError("There's more than one UnitActionSystem! " + transform + " - " + Instance);
+            Destroy(gameObject);
+            return;
         }
         Instance = this;
     }
@@ -31,6 +40,11 @@ public class UnitActionSystem : MonoBehaviour
     private void Update()
     {
         if (isBusy)
+        {
+            return;
+        }
+
+        if (!TurnSystem.Instance.IsPlayerTurn())
         {
             return;
         }
@@ -56,37 +70,53 @@ public class UnitActionSystem : MonoBehaviour
 
             if (selectedAction.IsValidActionGridPosition(mouseGridPosition))
             {
-                SetBusy();
-                selectedAction.TakeAction(mouseGridPosition, ClearBusy);
+                if (selectedAction.IsValidActionGridPosition(mouseGridPosition))
+                {
+                    if (selectedUnit.TrySpendActionPointsToTakeAction(selectedAction))
+                    {
+                        SetBusy();
+                        selectedAction.TakeAction(mouseGridPosition, ClearBusy);
+
+                        OnActionStarted?.Invoke(this, EventArgs.Empty);
+                    }
+                }
             }
         }
     }
 
+
     private void SetBusy()
     {
         isBusy = true;
+
+        OnBusyChanged?.Invoke(this, isBusy);
     }
 
     private void ClearBusy()
     {
         isBusy = false;
-    }
 
+        OnBusyChanged?.Invoke(this, isBusy);
+    }
 
     private bool TryHandleUnitSelection()
     {
         if (Input.GetMouseButtonDown(0))
         {
             Ray ray = Camera.main.ScreenPointToRay(Input.mousePosition);
-
             if (Physics.Raycast(ray, out RaycastHit raycastHit, float.MaxValue, unitLayerMask))
             {
-                // Is there some unit select
                 if (raycastHit.transform.TryGetComponent<Unit>(out Unit unit))
                 {
-                    if (unit == selectedAction)
+                    if (unit == selectedUnit)
                     {
-                        //Unit already selected
+                        // Unit is already selected
+                        return false;
+                    }
+
+                    if (unit.IsEnemy())
+                    {
+                        // Clicked on an Enemy
                         return false;
                     }
 
@@ -94,7 +124,6 @@ public class UnitActionSystem : MonoBehaviour
                     return true;
                 }
             }
-
         }
 
         return false;
@@ -103,6 +132,7 @@ public class UnitActionSystem : MonoBehaviour
     private void SetSelectedUnit(Unit unit)
     {
         selectedUnit = unit;
+
         SetSelectedAction(unit.GetMoveAction());
 
         OnSelectedUnitChanged?.Invoke(this, EventArgs.Empty);
@@ -111,6 +141,8 @@ public class UnitActionSystem : MonoBehaviour
     public void SetSelectedAction(BaseAction baseAction)
     {
         selectedAction = baseAction;
+
+        OnSelectedActionChanged?.Invoke(this, EventArgs.Empty);
     }
 
     public Unit GetSelectedUnit()

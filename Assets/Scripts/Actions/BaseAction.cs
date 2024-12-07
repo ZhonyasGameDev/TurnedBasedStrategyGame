@@ -7,7 +7,7 @@ public abstract class BaseAction : MonoBehaviour
 {
     protected Unit unit;
     protected bool isActive;
-    protected Action onActionComplete;
+    protected Action onActionCompleted;
 
     protected virtual void Awake()
     {
@@ -25,5 +25,22 @@ public abstract class BaseAction : MonoBehaviour
     }
 
     public abstract List<GridPosition> GetValidActionGridPositionList();
+
+    public virtual int GetActionPointsCost()
+    {
+        return 1;
+    }
+
+    protected void ActionStart(Action onActionCompleted)
+    {
+        isActive = true;
+        this.onActionCompleted = onActionCompleted;
+    }
+
+    protected void ActionCompleted()
+    {
+        isActive = false;
+        onActionCompleted();
+    }
 
 }
